@@ -1,0 +1,524 @@
+uc100:
+  option: {}
+  source:
+    x:
+    - S1
+    - S2
+    - S3
+    y: S_VAL
+  target:
+    x:
+    - T1
+    - T2
+    - T3
+    y:
+    - T1
+    - T2
+    - T3
+  answer:
+    x:
+    - S1
+    - S2
+    - S3
+    y: S_VAL
+uc101:
+  option:
+    extend_existing_list: true
+  source:
+    x:
+    - S1
+    - S2
+    - S3
+    y: S_VAL
+  target:
+    x:
+    - T1
+    - T2
+    - T3
+    y:
+    - T1
+    - T2
+    - T3
+  answer:
+    x:
+    - S1
+    - T1
+    - S2
+    - T2
+    - S3
+    - T3
+    y: S_VAL
+uc102:
+  option:
+    preserve_mismatch: true
+  source:
+    x:
+    - S1
+    - S2
+    - S3
+    y: S_VAL
+  target:
+    x:
+    - T1
+    - T2
+    - T3
+    y:
+    - T1
+    - T2
+    - T3
+  answer:
+    x:
+    - S1
+    - S2
+    - S3
+    y:
+    - T1
+    - T2
+    - T3
+uc103:
+  option:
+    overwrite_list: true
+  source:
+    x:
+    - S1
+    - S2
+  target:
+    x:
+    - T1
+    - T2
+    - T3
+    y:
+    - T1
+    - T2
+    - T3
+  answer:
+    x:
+    - S1
+    - S2
+    y:
+    - T1
+    - T2
+    - T3
+uc104:
+  option:
+    deduplicate_list: true
+  source:
+    x:
+    - S1
+    - S1
+    - S2
+    - S2
+    - S3
+  target:
+    x:
+    - T1
+    - T2
+    - T3
+    y:
+    - T1
+    - T2
+    - T3
+  answer:
+    x:
+    - S1
+    - S2
+    - S3
+    y:
+    - T1
+    - T2
+    - T3
+uc105:
+  option:
+    deduplicate_list: true
+  source:
+    x:
+    - S1
+    - S1
+    - S2
+    - S2
+    - S3
+  target:
+    x:
+    - T1
+    - T2
+    - T3
+    y:
+    - T1
+    - T2
+    - T3
+  answer:
+    x:
+    - S1
+    - S2
+    - S3
+    y:
+    - T1
+    - T2
+    - T3
+uc106:
+  option:
+    sort_merged_list: true
+    extend_existing_list: true
+  source:
+    x:
+    - 5
+    - 4
+    - 3
+    - 2
+    - 1
+  target:
+    x:
+    - 1
+    - 2
+    - 3
+    y:
+    - T1
+    - T2
+    - T3
+  answer:
+    x:
+    - 1
+    - 1
+    - 2
+    - 2
+    - 3
+    - 3
+    - 4
+    - 5
+    y:
+    - T1
+    - T2
+    - T3
+uc107:
+  option:
+    merge_dict_list: true
+  source:
+    x:
+    - k: S1
+    - S2
+    - S3
+  target:
+    x:
+    - k: T1
+    - T2
+    - T3
+    - T4
+  answer:
+    x:
+    - k: S1
+    - S2
+    - S3
+    - T4
+uc108:
+  option:
+    merge_dict_list: true
+  source:
+    x:
+    - S1
+    - S2
+    - k: S3
+    - S4
+  target:
+    x:
+    - T1
+    - T2
+    - k: T3
+  answer:
+    x:
+    - S1
+    - S2
+    - k: S3
+    - S4
+uc109:
+  option: {}
+  source:
+    x:
+    - S1
+    - null
+    - S3
+  target:
+    x:
+    - T1
+    - T2
+    - T3
+  answer:
+    x:
+    - S1
+    - T2
+    - S3
+uc110:
+  option:
+    merge_none_value: true
+  source:
+    x:
+    - S1
+    - null
+    - S3
+  target:
+    x:
+    - T1
+    - T2
+    - T3
+  answer:
+    x:
+    - S1
+    - null
+    - S3
+uc111:
+  option: {}
+  source:
+    x:
+    - S1
+    - null
+    - S3
+  target:
+    x:
+    - T1
+    - T2
+    - T3
+  answer:
+    x:
+    - S1
+    - T2
+    - S3
+uc112:
+  option: {}
+  source:
+    x:
+    - k: S1
+    - S2
+    - S3
+  target:
+    x:
+    - T1
+    - T2
+    - T3
+  answer:
+    x:
+    - k: S1
+    - S2
+    - S3
+uc113:
+  option:
+    preserve_mismatch: true
+  source:
+    x:
+    - k: S1
+    - S2
+    - S3
+  target:
+    x:
+    - T1
+    - T2
+    - T3
+  answer:
+    x:
+    - T1
+    - S2
+    - S3
+uc114:
+  option: {}
+  source:
+    x:
+    - - S1
+      - S2
+    - S3
+    - S4
+  target:
+    x:
+    - T1
+    - T2
+    - T3
+  answer:
+    x:
+    - - S1
+      - S2
+    - S3
+    - S4
+uc115:
+  option:
+    preserve_mismatch: true
+  source:
+    x:
+    - - S1
+      - S2
+    - S3
+    - S4
+  target:
+    x:
+    - T1
+    - T2
+    - T3
+  answer:
+    x:
+    - T1
+    - S3
+    - S4
+uc116:
+  option: {}
+  source:
+    x:
+    - k: S1
+    - S2
+    - S3
+    - - S4
+      - S5
+      - - S6
+  target:
+    x:
+    - - T1
+    - T2
+    - T3
+    - - k: T1
+      - T5
+      - - T6
+  answer:
+    x:
+    - k: S1
+    - S2
+    - S3
+    - - S4
+      - S5
+      - - S6
+uc117:
+  option:
+    extend_existing_list: true
+  source:
+    x:
+    - k: S1
+    - S2
+    - S3
+    - - S4
+      - S5
+      - - S6
+  target:
+    x:
+    - - T1
+    - T2
+    - T3
+    - - k: T1
+      - T5
+      - - T6
+  answer:
+    x:
+    - k: S1
+    - - T1
+    - S2
+    - T2
+    - S3
+    - T3
+    - - S4
+      - S5
+      - - S6
+    - - k: T1
+      - T5
+      - - T6
+uc118:
+  option:
+    extend_existing_list: true
+  source:
+    x:
+    - k: S1
+    - S2
+    - S3
+    - - S4
+      - S5
+      - - S6
+  target:
+    x:
+    - k: T1
+    - T2
+    - T3
+  answer:
+    x:
+    - k: S1
+    - k: T1
+    - S2
+    - T2
+    - S3
+    - T3
+    - - S4
+      - S5
+      - - S6
+uc119:
+  option:
+    extend_existing_list: true
+    merge_dict_list: true
+  source:
+    x:
+    - k: S1
+    - S2
+    - S3
+    - - S4
+      - S5
+      - - S6
+  target:
+    x:
+    - k: T1
+    - T2
+    - T3
+  answer:
+    x:
+    - k: S1
+    - k: T1
+    - S2
+    - T2
+    - S3
+    - T3
+    - - S4
+      - S5
+      - - S6
+uc120:
+  option: {}
+  source:
+    x:
+      one: S1
+      two: null
+      three: S3
+  target:
+    x:
+      one: T1
+      two: T2
+      three: T3
+  answer:
+    x:
+      one: S1
+      two: T2
+      three: S3
+uc121:
+  option:
+    merge_none_value: true
+  source:
+    x:
+      one: S1
+      two: null
+      three: S3
+  target:
+    x:
+      one: T1
+      two: T2
+      three: T3
+  answer:
+    x:
+      one: S1
+      two: null
+      three: S3
+uc122:
+  option:
+    exclude_paths:
+    - x.two
+  source:
+    x:
+      one: S1
+      two: S2_IGNORED
+      three: S3
+  target:
+    x:
+      one: T1
+      two: T2
+      three: T3
+  answer:
+    x:
+      one: S1
+      two: T2
+      three: S3
