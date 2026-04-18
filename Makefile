@@ -22,10 +22,7 @@ build:
 	uv build
 
 deploy: test
-	if ! git diff --quiet || ! git diff --cached --quiet; then
-		echo "Error: uncommitted changes — commit or stash before releasing"
-		exit 1
-	fi
+	git diff --quiet && git diff --cached --quiet || { echo "Error: uncommitted changes — commit or stash before deploying"; exit 1; }
 	git tag v$(VERSION)
 	git push origin v$(VERSION)
 
