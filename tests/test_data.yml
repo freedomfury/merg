@@ -190,8 +190,7 @@ uc106:
     - T2
     - T3
 uc107:
-  option:
-    merge_dict_list: true
+  option: {}
   source:
     x:
     - k: S1
@@ -210,8 +209,7 @@ uc107:
     - S3
     - T4
 uc108:
-  option:
-    merge_dict_list: true
+  option: {}
   source:
     x:
     - S1
@@ -443,7 +441,6 @@ uc118:
 uc119:
   option:
     extend_existing_list: true
-    merge_dict_list: true
   source:
     x:
     - k: S1
@@ -522,3 +519,173 @@ uc122:
       one: S1
       two: T2
       three: S3
+uc123:
+  # Knockout: list — Ruby docs canonical example.
+  option:
+    knockout_prefix: '--'
+  source:
+    x:
+    - '--1'
+    - '3'
+  target:
+    x:
+    - '1'
+    - '2'
+  answer:
+    x:
+    - '2'
+    - '3'
+uc124:
+  # Knockout: list — preserves target order, appends source non-knockouts.
+  option:
+    knockout_prefix: '--'
+  source:
+    x:
+    - '--c'
+    - e
+  target:
+    x:
+    - a
+    - b
+    - c
+    - d
+  answer:
+    x:
+    - a
+    - b
+    - d
+    - e
+uc125:
+  # Knockout: dict scalar — value equal to prefix becomes knockout_value (default null).
+  option:
+    knockout_prefix: '--'
+  source:
+    x:
+      a: '--'
+      b: 99
+  target:
+    x:
+      a: 1
+      b: 2
+  answer:
+    x:
+      a: null
+      b: 99
+uc126:
+  # Knockout: dict scalar with custom knockout_value.
+  option:
+    knockout_prefix: '--'
+    knockout_value: REMOVED
+  source:
+    x:
+      a: '--'
+  target:
+    x:
+      a: keep_me
+      b: untouched
+  answer:
+    x:
+      a: REMOVED
+      b: untouched
+uc127:
+  # Knockout: missing key in target is a no-op (not added as null).
+  option:
+    knockout_prefix: '--'
+  source:
+    x:
+      missing: '--'
+  target:
+    x:
+      kept: yes
+  answer:
+    x:
+      kept: yes
+uc128:
+  # Knockout: custom prefix.
+  option:
+    knockout_prefix: 'DEL:'
+  source:
+    x:
+    - 'DEL:b'
+    - d
+  target:
+    x:
+    - a
+    - b
+    - c
+  answer:
+    x:
+    - a
+    - c
+    - d
+uc129:
+  # Knockout: overrides extend_existing_list (filter+append, no interleave).
+  option:
+    knockout_prefix: '--'
+    extend_existing_list: true
+  source:
+    x:
+    - '--a'
+    - c
+  target:
+    x:
+    - a
+    - b
+  answer:
+    x:
+    - b
+    - c
+uc130:
+  # Knockout: nested in dict path.
+  option:
+    knockout_prefix: '--'
+  source:
+    outer:
+      inner: '--'
+  target:
+    outer:
+      inner: keep_me
+      other: 1
+  answer:
+    outer:
+      inner: null
+      other: 1
+uc131:
+  # Knockout combined with exclude_paths and dict-list mix:
+  # exclude_paths protects 'guarded.token' from any change, while knockouts
+  # remove 'beta' from features and wipe the 'fallback' region.
+  option:
+    knockout_prefix: '--'
+    exclude_paths:
+    - guarded.token
+  source:
+    features:
+    - '--beta'
+    - gdpr_banner
+    regions:
+      fallback: '--'
+    guarded:
+      token: HACKED
+      label: new_label
+  target:
+    features:
+    - alpha
+    - beta
+    - telemetry
+    regions:
+      primary: us-east
+      fallback: us-west
+    guarded:
+      token: SECRET
+      label: old_label
+  answer:
+    features:
+    - alpha
+    - telemetry
+    - gdpr_banner
+    regions:
+      primary: us-east
+      fallback: null
+    guarded:
+      token: SECRET
+      label: new_label

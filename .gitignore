@@ -147,3 +147,5 @@ cython_debug/
 *.swp
 *.swo
 .DS_Store
+
+docs/ai

@@ -1,5 +1,5 @@
 class DeepMergeError(Exception):
-    """Base exception for deep_merge library."""
+    """Base exception for merg library."""
     pass
 
 class InvalidTypeError(DeepMergeError):

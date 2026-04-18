@@ -1,6 +1,4 @@
-import pytest
-import copy
-from deep_merge import DeepMerge
+from merg import DeepMerge
 
 def test_deep_copy_behavior():
     """Verify that merged result does not reference original mutable objects."""
@@ -55,8 +53,35 @@ def test_legacy_dot_notation_exclusion():
     """Verify legacy string dot notation still works."""
     target = {"a": {"b": 1}}
     source = {"a": {"b": 2}}
-    
+
     merger = DeepMerge(exclude_paths=["a.b"])
     result = merger.merge(target, source)
-    
+
     assert result["a"]["b"] == 1
+
+
+# Bug #10: preserve_mismatch in a list path was appending the target item
+# directly without deepcopy, leaking a reference to the caller's data.
+def test_preserve_mismatch_top_level_list_does_not_leak_reference():
+    target = [{"nested": "original"}]
+    source = ["replaced_with_string"]
+    merger = DeepMerge(preserve_mismatch=True)
+    result = merger.merge(target, source)
+
+    # Mutate the result; target must remain untouched.
+    result[0]["nested"] = "MUTATED"
+
+    assert target[0]["nested"] == "original"
+    assert result[0] is not target[0]
+
+
+def test_preserve_mismatch_nested_list_does_not_leak_reference():
+    target = {"items": [{"nested": "original"}]}
+    source = {"items": ["replaced_with_string"]}
+    merger = DeepMerge(preserve_mismatch=True)
+    result = merger.merge(target, source)
+
+    result["items"][0]["nested"] = "MUTATED"
+
+    assert target["items"][0]["nested"] == "original"
+    assert result["items"][0] is not target["items"][0]
