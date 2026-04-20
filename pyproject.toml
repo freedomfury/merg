@@ -2,7 +2,7 @@
 name = "merg"
 version = "0.0.2"
 description = "Deep merging for Python with strict JSON/YAML-shaped type validation."
-authors = [{name = "Freedom Fury", email = "freeedomfury@gmail.com"}]
+authors = [{name = "Freedom Fury", email = "freedomfury@gmail.com"}]
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"

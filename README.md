@@ -214,7 +214,7 @@ merg.merge({"a": "keep"}, {"a": None})
 
 ## Why merg vs other libraries?
 
-| | **merg** | **deepmerge** (toumorokoshi) | **mergedeep** |
+| | **merg** | **deepmerge** | **mergedeep** |
 |---|---|---|---|
 | Type safety | Strict — rejects `set`, `tuple`, `datetime`, etc. | Permissive — merges anything | Permissive |
 | API style | Options dict | Strategy classes | Function call |
@@ -227,7 +227,7 @@ merg.merge({"a": "keep"}, {"a": None})
 
 ## Relationship to Ruby `deep_merge`
 
-This library is inspired by the Ruby [`deep_merge`](https://github.com/danielsdeleo/deep_merge) gem (Steve Midgley / Daniel DeLeo), authored to be more Pythonic.
+This library is inspired by the Ruby [`deep_merge`](https://github.com/danielsdeleo/deep_merge) gem, authored to be more Pythonic.
 
 | Ruby `deep_merge` option | merg equivalent | Notes |
 |---|---|---|
