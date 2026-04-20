@@ -23,6 +23,8 @@ build:
 
 deploy: test
 	git diff --quiet && git diff --cached --quiet || { echo "Error: uncommitted changes — commit or stash before deploying"; exit 1; }
+	INIT_VERSION=$$(grep '^__version__ = ' merg/__init__.py | cut -d'"' -f2)
+	[ "$$INIT_VERSION" = "$(VERSION)" ] || { echo "Error: version mismatch — pyproject.toml=$(VERSION), merg/__init__.py=$$INIT_VERSION"; exit 1; }
 	git tag v$(VERSION)
 	git push origin v$(VERSION)
 
