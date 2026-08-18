@@ -85,3 +85,27 @@ def test_preserve_mismatch_nested_list_does_not_leak_reference():
 
     assert target["items"][0]["nested"] == "original"
     assert result["items"][0] is not target["items"][0]
+
+
+# Review Bug 1: the inline type-mismatch block in _merge_list compared types
+# before the sentinel checks, so with preserve_mismatch=True a list treated a
+# knockout or None source value as a "mismatch" and kept the target — while a
+# dict resolved the sentinel first. Each test asserts dict and list agree.
+def test_preserve_mismatch_knockout_agrees_between_dict_and_list():
+    merger = DeepMerge(preserve_mismatch=True, knockout_prefix="--")
+    assert merger.merge({"a": 5}, {"a": "--"}) == {"a": None}
+    assert merger.merge([5], ["--"]) == [None]
+
+
+def test_preserve_mismatch_custom_knockout_value_agrees_between_dict_and_list():
+    # The strongest of the three: fails for a reason unrelated to None's
+    # ambiguity, so it stays meaningful even if knockout semantics change later.
+    merger = DeepMerge(preserve_mismatch=True, knockout_prefix="--", knockout_value=10)
+    assert merger.merge({"a": 5}, {"a": "--"}) == {"a": 10}
+    assert merger.merge([5], ["--"]) == [10]
+
+
+def test_preserve_mismatch_merge_none_value_agrees_between_dict_and_list():
+    merger = DeepMerge(preserve_mismatch=True, merge_none_value=True)
+    assert merger.merge({"a": 5}, {"a": None}) == {"a": None}
+    assert merger.merge([5], [None]) == [None]

@@ -149,3 +149,5 @@ cython_debug/
 .DS_Store
 
 docs/ai
+
+tmp

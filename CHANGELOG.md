@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.3] - 2026-08-18
+
+### Fixed
+
+- `_merge_list` disagreed with `_merge_dict` when `preserve_mismatch=True` and the source value was a knockout marker or `None`. The default index-merge loop ran its own type-mismatch check before `_merge_recursive` could resolve those sentinels, so `merge([5], ["--"])` kept the target while `merge({"a": 5}, {"a": "--"})` knocked out. The duplicated check is deleted — `_merge_recursive` is now the single definition of merge precedence — and behavior on every other path is unchanged.
+- 3 new tests asserting dict and list agree under `preserve_mismatch=True` for bare knockout, custom `knockout_value`, and `merge_none_value` (116 total).
+
 ## [0.0.2] - 2026-04-18
 
 ### Added

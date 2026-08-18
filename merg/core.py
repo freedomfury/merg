@@ -257,11 +257,6 @@ class DeepMerge:
                     s_item = source[i]
                     t_item = target[i]
 
-                    if not isinstance(s_item, type(t_item)) and not (isinstance(s_item, (int, float)) and isinstance(t_item, (int, float))):
-                        if self.options["preserve_mismatch"]:
-                            result.append(copy.deepcopy(t_item))
-                            continue
-
                     result.append(self._merge_recursive(t_item, s_item, item_path))
 
                 elif i < len(source):
