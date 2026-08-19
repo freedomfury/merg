@@ -1,6 +1,5 @@
 from merg import DeepMerge
 
-
 # Bug #9: overwrite_list=True returns early, silently skipping
 # deduplicate_list and sort_merged_list post-processing.
 

@@ -1,6 +1,6 @@
 import pytest
-from merg import DeepMerge
 
+from merg import DeepMerge
 
 # Bug #6: Unknown option names were silently accepted, masking typos like
 # `extend_exsting_list=True`. Reject unknown options at __init__.
@@ -30,7 +30,6 @@ def test_all_known_options_still_accepted():
         sort_merged_list=False,
         merge_none_value=False,
         knockout_prefix="--",
-        knockout_value=None,
     )
 
 

@@ -11,7 +11,7 @@ venv:
 	uv sync
 
 lint:
-	uv tool run ruff check merg/ tests/
+	uv tool run ruff@0.16.3 check merg/ tests/ examples/
 
 tests:
 	uv run pytest tests/ -v

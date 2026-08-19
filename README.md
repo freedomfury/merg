@@ -74,6 +74,13 @@ result = merg.merge(defaults, overrides)
 
 This narrowness is intentional. If your data contains unsupported types, convert them before merging.
 
+**Watch out for YAML dates.** YAML implicitly resolves unquoted date-like scalars to `date`/`datetime` objects — which merg rejects. This commonly bites Ansible users and anyone loading YAML with `yaml.safe_load`. Quote the value to keep it a string:
+
+```yaml
+deploy_date: "2026-08-18"   # str  — merges fine (single quotes work too)
+deploy_date: 2026-08-18     # date — raises InvalidTypeError
+```
+
 ## Options
 
 Instantiate `DeepMerge` with keyword arguments to control merge behavior. The instance is stateless after construction — create one and call `merge()` as many times as you like.
@@ -145,28 +152,28 @@ merg.merge({"x": [3, 1]}, {"x": [5, 2]})
 # {"x": [1, 2, 3, 5]}
 ```
 
-### `knockout_prefix` (default: `""`) and `knockout_value` (default: `None`)
+### `knockout_prefix` (default: `""`)
 
-Set `knockout_prefix` to a marker string (e.g. `"--"`) to enable removal semantics. When the source contains values starting with that prefix, they're treated as removal instructions instead of data.
+Set `knockout_prefix` to a marker string (e.g. `"--"`) to enable removal semantics. When the source contains strings starting with that prefix, they're treated as removal instructions instead of data — a marker never appears in the merged result.
 
-**In lists** — items prefixed with the marker remove matching items from the merged result. The knockout entries themselves never appear in the output.
+**In lists** — an item with a payload (`"--one"`) removes matching target items by value, wherever they sit. A bare marker (`"--"`) wipes the target list entirely; the remaining source items then append. Position within the source list is irrelevant.
 
 ```python
 merg = DeepMerge(knockout_prefix="--")
 merg.merge(["one", "two", "three"], ["--one", "four"])
 # ["two", "three", "four"]
+
+merg = DeepMerge(knockout_prefix="--")
+merg.merge([1, 2, 3], ["--", "9"])
+# ["9"]
 ```
 
-**In dicts and at the top level** — a value equal to the prefix exactly is replaced with `knockout_value` (defaults to `None`).
+**In dicts** — a value equal to the prefix exactly removes the key entirely. It is not nulled: if you want a key present with no value, write `null` and set `merge_none_value=True`.
 
 ```python
 merg = DeepMerge(knockout_prefix="--")
 merg.merge({"a": 1, "b": 2}, {"a": "--"})
-# {"a": None, "b": 2}
-
-merg = DeepMerge(knockout_prefix="--", knockout_value="REMOVED")
-merg.merge({"a": 1, "b": 2}, {"a": "--"})
-# {"a": "REMOVED", "b": 2}
+# {"b": 2}
 ```
 
 **On dict keys** — a source key prefixed with the marker removes the matching key from the target entirely. The *value* under a knockout key is irrelevant and discarded — it exists only because dict entries need one; use `""`, `None`, or anything else.
@@ -238,7 +245,7 @@ This library is inspired by the Ruby [`deep_merge`](https://github.com/danielsde
 | `:extend_existing_arrays` | `extend_existing_list=True` | Python naming |
 | `:sort_merged_arrays` | `sort_merged_list=True` | Python naming |
 | `:uniq_arrays` | `deduplicate_list=True` | Python naming |
-| `:knockout_prefix` | `knockout_prefix=...` | Plus configurable `knockout_value` |
+| `:knockout_prefix` | `knockout_prefix=...` | Bare marker removes; no `knockout_value` |
 | Block/proc | — | Not applicable in Python |
 
 > **Trivia:** The Ruby `deep_merge` gem was the merge engine behind Puppet's Hiera data lookup system.

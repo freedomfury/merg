@@ -1,6 +1,5 @@
 from merg import DeepMerge
 
-
 # -----------------------------------------------------------------------------
 # Bug #2 / #3 — exclude_paths must apply to list items in *all* merge modes
 # (default index merge, extend_existing_list, and source-only items beyond

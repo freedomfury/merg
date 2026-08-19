@@ -1,4 +1,7 @@
+import pytest
+
 from merg import DeepMerge
+
 
 def test_deep_copy_behavior():
     """Verify that merged result does not reference original mutable objects."""
@@ -93,16 +96,14 @@ def test_preserve_mismatch_nested_list_does_not_leak_reference():
 # dict resolved the sentinel first. Each test asserts dict and list agree.
 def test_preserve_mismatch_knockout_agrees_between_dict_and_list():
     merger = DeepMerge(preserve_mismatch=True, knockout_prefix="--")
-    assert merger.merge({"a": 5}, {"a": "--"}) == {"a": None}
-    assert merger.merge([5], ["--"]) == [None]
+    assert merger.merge({"a": 5}, {"a": "--"}) == {}
+    assert merger.merge([5], ["--"]) == []
 
 
-def test_preserve_mismatch_custom_knockout_value_agrees_between_dict_and_list():
-    # The strongest of the three: fails for a reason unrelated to None's
-    # ambiguity, so it stays meaningful even if knockout semantics change later.
-    merger = DeepMerge(preserve_mismatch=True, knockout_prefix="--", knockout_value=10)
-    assert merger.merge({"a": 5}, {"a": "--"}) == {"a": 10}
-    assert merger.merge([5], ["--"]) == [10]
+def test_knockout_value_option_is_rejected():
+    """knockout_value was deleted with the removal-semantics change."""
+    with pytest.raises(TypeError, match="unknown option"):
+        DeepMerge(preserve_mismatch=True, knockout_prefix="--", knockout_value=10)
 
 
 def test_preserve_mismatch_merge_none_value_agrees_between_dict_and_list():

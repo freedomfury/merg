@@ -556,7 +556,7 @@ uc124:
     - d
     - e
 uc125:
-  # Knockout: dict scalar — value equal to prefix becomes knockout_value (default null).
+  # Knockout: dict — bare marker removes the key, not just its value.
   option:
     knockout_prefix: '--'
   source:
@@ -569,13 +569,11 @@ uc125:
       b: 2
   answer:
     x:
-      a: null
       b: 99
 uc126:
-  # Knockout: dict scalar with custom knockout_value.
+  # Knockout: dict — bare marker at a nested path removes that key.
   option:
     knockout_prefix: '--'
-    knockout_value: REMOVED
   source:
     x:
       a: '--'
@@ -585,7 +583,6 @@ uc126:
       b: untouched
   answer:
     x:
-      a: REMOVED
       b: untouched
 uc127:
   # Knockout: missing key in target is a no-op (not added as null).
@@ -636,7 +633,7 @@ uc129:
     - b
     - c
 uc130:
-  # Knockout: nested in dict path.
+  # Knockout: nested in dict path — inner key removed, no cascade.
   option:
     knockout_prefix: '--'
   source:
@@ -648,12 +645,11 @@ uc130:
       other: 1
   answer:
     outer:
-      inner: null
       other: 1
 uc131:
   # Knockout combined with exclude_paths and dict-list mix:
   # exclude_paths protects 'guarded.token' from any change, while knockouts
-  # remove 'beta' from features and wipe the 'fallback' region.
+  # remove 'beta' from features and delete the 'fallback' region key.
   option:
     knockout_prefix: '--'
     exclude_paths:
@@ -685,7 +681,52 @@ uc131:
     - gdpr_banner
     regions:
       primary: us-east
-      fallback: null
     guarded:
       token: SECRET
       label: new_label
+uc132:
+  # Knockout: bare marker in a list wipes the target, then appends the rest.
+  option:
+    knockout_prefix: '--'
+  source:
+    x:
+    - '--'
+    - '9'
+  target:
+    x:
+    - 1
+    - 2
+    - 3
+  answer:
+    x:
+    - '9'
+uc133:
+  # Knockout: bare marker position in the source list is irrelevant.
+  option:
+    knockout_prefix: '--'
+  source:
+    x:
+    - '9'
+    - '--'
+  target:
+    x:
+    - 1
+    - 2
+    - 3
+  answer:
+    x:
+    - '9'
+uc134:
+  # Knockout: bare + payload together — wipe wins, nothing survives to append.
+  option:
+    knockout_prefix: '--'
+  source:
+    x:
+    - '--'
+    - '--b'
+  target:
+    x:
+    - a
+    - b
+  answer:
+    x: []

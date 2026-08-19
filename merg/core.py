@@ -1,9 +1,16 @@
-import logging
-import copy
 import ast
+import contextlib
+import copy
+import datetime
+import logging
+
 from .exceptions import InvalidTypeError
 
 logger = logging.getLogger(__name__)
+
+# Sentinel returned when a merge removes the address instead of producing a
+# value. _merge_dict pops the key on it; it never escapes merge().
+_REMOVED = object()
 
 
 def _format_path(path):
@@ -45,7 +52,6 @@ class DeepMerge:
             "sort_merged_list": False,
             "merge_none_value": False,
             "knockout_prefix": "",
-            "knockout_value": None,
         }
 
         # Reject unknown option names so typos fail loudly instead of silently
@@ -58,9 +64,6 @@ class DeepMerge:
             )
 
         self.options.update(options)
-
-        # Validate knockout_value against the same type contract the merge enforces.
-        self._validate_tree(self.options["knockout_value"], ("knockout_value",))
 
         # Validate and normalize exclude_paths to a set of tuples.
         raw_paths = self.options["exclude_paths"]
@@ -101,10 +104,9 @@ class DeepMerge:
             return (node.id,)
         elif isinstance(node, ast.Attribute):
             return self._visit_node(node.value) + (node.attr,)
-        elif isinstance(node, ast.Subscript):
-            if isinstance(node.slice, ast.Constant):
-                index = node.slice.value
-                return self._visit_node(node.value) + (index,)
+        elif isinstance(node, ast.Subscript) and isinstance(node.slice, ast.Constant):
+            index = node.slice.value
+            return self._visit_node(node.value) + (index,)
 
         raise ValueError(f"Unsupported path syntax in: {node}")
 
@@ -117,10 +119,16 @@ class DeepMerge:
         any value (at any depth) is not one of the allowed JSON/YAML
         types, an InvalidTypeError is raised before merging begins.
 
-        Top-level scalars are valid inputs: when both arguments are
-        scalars, source wins (pass-through). When types differ at the
-        top level, the mismatch rules apply as they do recursively.
+        The document root of both arguments must be a dict or a list;
+        anything else raises InvalidTypeError. Scalars are valid
+        everywhere else in the tree.
         """
+        for name, value in (("target", target), ("source", source)):
+            if not isinstance(value, (dict, list)):
+                raise InvalidTypeError(
+                    f"Top level must be dict or list; "
+                    f"got {_format_type(value)} in {name}."
+                )
         self._validate_tree(target, ("target",))
         self._validate_tree(source, ("source",))
         return self._merge_recursive(target, source)
@@ -128,8 +136,14 @@ class DeepMerge:
     def _validate_tree(self, value, path):
         """Recursively validate that every value in the tree is an allowed type."""
         if not isinstance(value, self.ALLOWED_TYPES):
+            hint = ""
+            if isinstance(value, datetime.date):
+                hint = (
+                    " — YAML parsed this as a date; "
+                    'quote it ("2026-08-18") to keep it a string'
+                )
             raise InvalidTypeError(
-                f"Invalid type at '{_format_path(path)}': {_format_type(value)}"
+                f"Invalid type at '{_format_path(path)}': {_format_type(value)}{hint}"
             )
         if isinstance(value, dict):
             for k, v in value.items():
@@ -142,10 +156,10 @@ class DeepMerge:
         if path in self.options["exclude_paths"]:
             return copy.deepcopy(target)
 
-        # Knockout: source equals prefix exactly -> replace with knockout_value
+        # Knockout: source equals prefix exactly -> remove the address it occupies.
         ko_prefix = self.options["knockout_prefix"]
         if ko_prefix and isinstance(source, str) and source == ko_prefix:
-            return copy.deepcopy(self.options["knockout_value"])
+            return _REMOVED
 
         # Handle None
         if source is None:
@@ -157,7 +171,10 @@ class DeepMerge:
         if not isinstance(source, type(target)) and not (isinstance(source, (int, float)) and isinstance(target, (int, float))):
             if self.options["preserve_mismatch"]:
                 return copy.deepcopy(target)
-            return copy.deepcopy(source)
+            # Route adopted source subtrees through the machinery so markers
+            # are consumed (Finding 1) — a bare marker was already caught by
+            # the knockout check above, so _copy_source can't return _REMOVED.
+            return self._copy_source(source, path)
 
         # Merge Dictionaries
         if isinstance(source, dict):
@@ -205,45 +222,70 @@ class DeepMerge:
                 continue
 
             if key in result:
-                result[key] = self._merge_recursive(result[key], value, current_path)
+                merged = self._merge_recursive(result[key], value, current_path)
+                if merged is _REMOVED:
+                    del result[key]
+                else:
+                    result[key] = merged
             else:
                 # Knockout against a missing key: skip entirely (nothing to remove)
                 if ko_prefix and isinstance(value, str) and value == ko_prefix:
                     continue
-                result[key] = copy.deepcopy(value)
+                result[key] = self._copy_source(value, current_path)
 
         return result
 
+    def _copy_source(self, value, path):
+        """
+        Copy a source value that has no target counterpart.
+
+        Containers still pass through the merge machinery so knockout
+        tokens inside them are consumed rather than copied into the
+        result; scalars copy verbatim.
+        """
+        if isinstance(value, dict):
+            return self._merge_dict({}, value, path)
+        if isinstance(value, list):
+            return self._merge_list([], value, path)
+        return copy.deepcopy(value)
+
     def _merge_list(self, target, source, path):
-        # Pre-scan source for knockout entries.
+        # Pre-scan source for knockout entries. A bare prefix wipes the
+        # whole target list; a payload entry (--x) removes target items
+        # equal to x.
         ko_prefix = self.options["knockout_prefix"]
+        wipe = False
         knockout_matches = []
-        if ko_prefix:
-            stripped_source = []
-            for item in source:
-                if (isinstance(item, str)
-                        and item.startswith(ko_prefix)
-                        and item != ko_prefix):
-                    knockout_matches.append(item[len(ko_prefix):])
+        indexed_source = []
+        for i, item in enumerate(source):
+            if ko_prefix and isinstance(item, str) and item.startswith(ko_prefix):
+                if item == ko_prefix:
+                    wipe = True
                 else:
-                    stripped_source.append(item)
-            source = stripped_source
+                    knockout_matches.append(item[len(ko_prefix):])
+            else:
+                indexed_source.append((i, item))
 
         # Knockouts override list-strategy options. The semantics are
-        # purely set-based: filter target by knockouts, then append
-        # source non-knockouts. This matches Ruby's deep_merge gem.
-        if knockout_matches:
-            filtered_target = [t for t in target if t not in knockout_matches]
-            result = [copy.deepcopy(t) for t in filtered_target]
-            result.extend(copy.deepcopy(s) for s in source)
+        # purely set-based: wipe or filter the target, then append the
+        # remaining source items. Position within the source list is
+        # irrelevant. (exclude_paths is not consulted here yet — Bug 2.)
+        if ko_prefix and (wipe or knockout_matches):
+            if wipe:
+                result = []
+            else:
+                result = [copy.deepcopy(t) for t in target if t not in knockout_matches]
+            result.extend(
+                self._copy_source(item, path + (i,)) for i, item in indexed_source
+            )
         elif self.options["overwrite_list"]:
-            result = [copy.deepcopy(s) for s in source]
+            result = [self._copy_source(s, path + (i,)) for i, s in enumerate(source)]
         elif self.options["extend_existing_list"]:
             result = []
             max_len = max(len(source), len(target))
             for i in range(max_len):
                 if i < len(source) and (path + (i,)) not in self.options["exclude_paths"]:
-                    result.append(copy.deepcopy(source[i]))
+                    result.append(self._copy_source(source[i], path + (i,)))
                 if i < len(target):
                     result.append(copy.deepcopy(target[i]))
         else:
@@ -263,7 +305,7 @@ class DeepMerge:
                     # Source-only item: skip if its path is excluded.
                     if item_path in self.options["exclude_paths"]:
                         continue
-                    result.append(copy.deepcopy(source[i]))
+                    result.append(self._copy_source(source[i], item_path))
                 else:
                     # Target-only item: always preserved (exclude_paths controls
                     # what source can write, not what target retains).
@@ -280,9 +322,7 @@ class DeepMerge:
                 result = unique
 
         if self.options["sort_merged_list"]:
-            try:
+            with contextlib.suppress(TypeError):
                 result.sort()
-            except TypeError:
-                pass
 
         return result

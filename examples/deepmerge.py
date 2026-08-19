@@ -1,5 +1,6 @@
 # examples/deepmerge.py
 import yaml
+
 from merg import DeepMerge
 
 source = {
@@ -108,13 +109,13 @@ def scenario_knockout_merge():
     region_override = {
         # Remove 'telemetry' and 'ads', then add 'gdpr_banner'
         "features": ["--telemetry", "--ads", "gdpr_banner"],
-        # Wipe the fallback region for this deployment
+        # Remove the fallback region key for this deployment
         "regions": {"fallback": "--"}
     }
 
     merg = DeepMerge(knockout_prefix="--")
     merged = merg.merge(base_config, region_override)
-    print_scenario("Scenario 6: Knockout Prefix (List removal + scalar wipe)", merged)
+    print_scenario("Scenario 6: Knockout Prefix (List removal + key removal)", merged)
 
 if __name__ == "__main__":
     # The first two examples run on import if we don't guard them,

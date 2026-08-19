@@ -1,7 +1,10 @@
+from pathlib import Path
+
 import pytest
 import yaml
-from pathlib import Path
+
 from merg import DeepMerge
+
 
 def get_test_cases():
     root = Path(__file__).parent

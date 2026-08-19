@@ -1,4 +1,5 @@
 import pytest
+
 from merg import DeepMerge, InvalidTypeError
 from merg.core import _format_path
 
@@ -54,32 +55,27 @@ def test_bool_int_merge():
     assert merger_p.merge({"a": True}, {"a": 0}) == {"a": 0}
 
 
-def test_top_level_scalars():
-    """Top-level scalars merge with source-wins semantics (pass-through)."""
+def test_top_level_root_must_be_dict_or_list():
+    """The document root must be a container; scalar and None roots are rejected."""
     merger = DeepMerge()
 
-    assert merger.merge(1, 2) == 2
-    assert merger.merge("old", "new") == "new"
-    assert merger.merge(1.0, 2.5) == 2.5
-    assert merger.merge(True, False) is False
+    with pytest.raises(InvalidTypeError):
+        merger.merge(1, 2)
+    with pytest.raises(InvalidTypeError):
+        merger.merge("old", "new")
+    with pytest.raises(InvalidTypeError):
+        merger.merge(None, {})
+    with pytest.raises(InvalidTypeError):
+        merger.merge({}, 5)
 
 
-def test_top_level_none_handling():
-    """None at top level follows merge_none_value option."""
+def test_top_level_none_handling_within_containers():
+    """None inside the tree still follows merge_none_value."""
     merger = DeepMerge()
-    assert merger.merge("keep", None) == "keep"
+    assert merger.merge({"a": "keep"}, {"a": None}) == {"a": "keep"}
 
     merger_n = DeepMerge(merge_none_value=True)
-    assert merger_n.merge("keep", None) is None
-
-
-def test_top_level_type_mismatch():
-    """Top-level type mismatch follows preserve_mismatch option."""
-    merger = DeepMerge()
-    assert merger.merge(1, "two") == "two"  # source wins
-
-    merger_p = DeepMerge(preserve_mismatch=True)
-    assert merger_p.merge(1, "two") == 1  # target kept
+    assert merger_n.merge({"a": "keep"}, {"a": None}) == {"a": None}
 
 
 def test_top_level_list_merge():
@@ -148,3 +144,14 @@ def test_valid_deeply_nested_target_passes():
     result = merger.merge(target, {"scalars": [99]})
     assert result["scalars"][0] == 99
     assert result["level1"]["level2"]["level3"] == [1, 2, {"k": "v"}]
+
+
+def test_date_types_rejected_with_quoting_hint():
+    """Dates stay invalid by design; the error points at the YAML quoting fix."""
+    import datetime
+
+    merger = DeepMerge()
+    with pytest.raises(InvalidTypeError, match="quote it"):
+        merger.merge({}, {"deploy_date": datetime.date(2026, 8, 18)})
+    with pytest.raises(InvalidTypeError, match="quote it"):
+        merger.merge({"start": datetime.datetime(2026, 8, 18, 10, 0)}, {})

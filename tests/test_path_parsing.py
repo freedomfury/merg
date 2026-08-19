@@ -1,5 +1,6 @@
 from merg.core import DeepMerge
 
+
 def test_ast_path_parsing_dot_notation():
     merger = DeepMerge(exclude_paths=["server.config.port"])
     assert ("server", "config", "port") in merger.options["exclude_paths"]
