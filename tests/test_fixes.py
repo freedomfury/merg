@@ -95,9 +95,11 @@ def test_preserve_mismatch_nested_list_does_not_leak_reference():
 # knockout or None source value as a "mismatch" and kept the target — while a
 # dict resolved the sentinel first. Each test asserts dict and list agree.
 def test_preserve_mismatch_knockout_agrees_between_dict_and_list():
+    """A bare marker is data now, so it flows through the ordinary mismatch
+    rules — and dicts and lists agree."""
     merger = DeepMerge(preserve_mismatch=True, knockout_prefix="--")
-    assert merger.merge({"a": 5}, {"a": "--"}) == {}
-    assert merger.merge([5], ["--"]) == []
+    assert merger.merge({"a": 5}, {"a": "--"}) == {"a": 5}
+    assert merger.merge([5], ["--"]) == [5]
 
 
 def test_knockout_value_option_is_rejected():

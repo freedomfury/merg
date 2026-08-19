@@ -99,9 +99,11 @@ merg.merge({"a": 1}, {"a": "two"})
 # {"a": "two"}  — source wins
 ```
 
+A `None` target is treated as absent, not as a protected value — YAML turns a blank key or a stubbed section into `None`, and a patch supplying the real value fills it regardless of `preserve_mismatch`.
+
 ### `exclude_paths` (default: `[]`)
 
-Skip specific paths during merge. Supports dot notation, bracket notation, and raw tuples.
+Remove specific paths from the **patch** before merging — whatever remains merges by the ordinary rules. Supports dot notation, bracket notation, and raw tuples.
 
 ```python
 merg = DeepMerge(exclude_paths=["server.port", "db['password']"])
@@ -111,6 +113,10 @@ merg.merge(
 )
 # {"server": {"port": 80, "host": "new"}, "db": {"password": "secret"}}
 ```
+
+Excluded paths are matched against the patch's own structure: a dropped value is never inspected (a scalar, a list, `None`, or a knockout marker all behave the same), and a path absent from the patch is a no-op. There is no target-side behavior — the base is never protected, pinned, or inspected.
+
+Prefer excluding **keys**. A path ending in a bare list index addresses a position, and dropping an element shifts the elements after it one slot earlier, changing what the rest of the patch lines up with. Note also that a key can be removed by a patch two ways — `{'a': '--'}` or `{'--a': ''}` — so blocking both spellings means excluding both `a` and `--a`.
 
 ### `overwrite_list` (default: `False`)
 
@@ -154,29 +160,24 @@ merg.merge({"x": [3, 1]}, {"x": [5, 2]})
 
 ### `knockout_prefix` (default: `""`)
 
-Set `knockout_prefix` to a marker string (e.g. `"--"`) to enable removal semantics. When the source contains strings starting with that prefix, they're treated as removal instructions instead of data — a marker never appears in the merged result.
+Set `knockout_prefix` to a marker string (e.g. `"--"`) to enable removal semantics. There is exactly one removal form — the prefix plus a name — and it addresses two positions:
 
-**In lists** — an item with a payload (`"--one"`) removes matching target items by value, wherever they sit. A bare marker (`"--"`) wipes the target list entirely; the remaining source items then append. Position within the source list is irrelevant.
+- **On a dict key**, `--a` removes key `a` from the target.
+- **As a list item**, `--x` removes target items whose **value** equals `x`, wherever they sit. Removal addresses values, not positions — `--0` does not remove a list's first element.
+
+Everything else is data, including a bare prefix: `{"a": "--"}` assigns the two-character string `"--"`, and `["--"]` merges as an ordinary list item.
 
 ```python
+merg = DeepMerge(knockout_prefix="--")
+merg.merge({"a": 1, "b": 2}, {"--a": ""})
+# {"b": 2}
+
 merg = DeepMerge(knockout_prefix="--")
 merg.merge(["one", "two", "three"], ["--one", "four"])
 # ["two", "three", "four"]
-
-merg = DeepMerge(knockout_prefix="--")
-merg.merge([1, 2, 3], ["--", "9"])
-# ["9"]
 ```
 
-**In dicts** — a value equal to the prefix exactly removes the key entirely. It is not nulled: if you want a key present with no value, write `null` and set `merge_none_value=True`.
-
-```python
-merg = DeepMerge(knockout_prefix="--")
-merg.merge({"a": 1, "b": 2}, {"a": "--"})
-# {"b": 2}
-```
-
-**On dict keys** — a source key prefixed with the marker removes the matching key from the target entirely. The *value* under a knockout key is irrelevant and discarded — it exists only because dict entries need one; use `""`, `None`, or anything else.
+**On dict keys** — the *value* under a knockout key is irrelevant and discarded — it exists only because dict entries need one; use `""`, `None`, or anything else.
 
 ```python
 merg = DeepMerge(knockout_prefix="--")
@@ -204,6 +205,12 @@ In YAML, this is typically written with a null value (any of these forms work �
 '--another_key': null
 '--third_key': ~
 ```
+
+**Limitations of a string-prefix scheme** — know them before enabling:
+
+- Removal matches **string** values only. `["--443"]` cannot remove the integer `443`, and a list of dicts (`users:`, `volumes:`, `rules:`) has no removal form at all.
+- **In-band collision:** data whose string starts with the prefix is read as an instruction. `args: ["--quiet"]` in a patch removes an item named `quiet` rather than adding a flag. The prefix is configurable precisely so you can avoid this — pick something your data never starts with.
+- In YAML, avoid `&`, `*`, `!`, `#`, `~`, and `@` as prefixes — they're the anchor, alias, tag, comment, null, and reserved indicators.
 
 ### `merge_none_value` (default: `False`)
 
@@ -245,7 +252,7 @@ This library is inspired by the Ruby [`deep_merge`](https://github.com/danielsde
 | `:extend_existing_arrays` | `extend_existing_list=True` | Python naming |
 | `:sort_merged_arrays` | `sort_merged_list=True` | Python naming |
 | `:uniq_arrays` | `deduplicate_list=True` | Python naming |
-| `:knockout_prefix` | `knockout_prefix=...` | Bare marker removes; no `knockout_value` |
+| `:knockout_prefix` | `knockout_prefix=...` | One removal form (`--x`); bare prefix is data |
 | Block/proc | — | Not applicable in Python |
 
 > **Trivia:** The Ruby `deep_merge` gem was the merge engine behind Puppet's Hiera data lookup system.

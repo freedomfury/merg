@@ -8,10 +8,6 @@ from .exceptions import InvalidTypeError
 
 logger = logging.getLogger(__name__)
 
-# Sentinel returned when a merge removes the address instead of producing a
-# value. _merge_dict pops the key on it; it never escapes merge().
-_REMOVED = object()
-
 
 def _format_path(path):
     """Format a path tuple as a human-readable dotted string."""
@@ -131,6 +127,8 @@ class DeepMerge:
                 )
         self._validate_tree(target, ("target",))
         self._validate_tree(source, ("source",))
+        if self.options["exclude_paths"]:
+            source = self._strip_excluded(source)
         return self._merge_recursive(target, source)
 
     def _validate_tree(self, value, path):
@@ -152,29 +150,42 @@ class DeepMerge:
             for i, v in enumerate(value):
                 self._validate_tree(v, path + (i,))
 
+    def _strip_excluded(self, value, path=()):
+        """
+        Remove excluded paths from the patch before merging.
+
+        exclude_paths names paths in the patch. Those paths are dropped and what
+        remains is merged by the ordinary rules. A path that isn't present is a
+        no-op. Builds new containers, so the caller's patch is not mutated.
+        """
+        if isinstance(value, dict):
+            return {k: self._strip_excluded(v, path + (k,))
+                    for k, v in value.items()
+                    if (path + (k,)) not in self.options["exclude_paths"]}
+        if isinstance(value, list):
+            return [self._strip_excluded(v, path + (i,))
+                    for i, v in enumerate(value)
+                    if (path + (i,)) not in self.options["exclude_paths"]]
+        return value
+
     def _merge_recursive(self, target, source, path=()):
-        if path in self.options["exclude_paths"]:
-            return copy.deepcopy(target)
-
-        # Knockout: source equals prefix exactly -> remove the address it occupies.
-        ko_prefix = self.options["knockout_prefix"]
-        if ko_prefix and isinstance(source, str) and source == ko_prefix:
-            return _REMOVED
-
         # Handle None
         if source is None:
             if self.options["merge_none_value"]:
                 return None
             return copy.deepcopy(target)
 
+        # A None target means "absent", not "a value worth keeping": YAML turns a
+        # blank key or a stubbed section into None, and a patch supplying the real
+        # value must not be blocked by preserve_mismatch.
+        if target is None:
+            return copy.deepcopy(source)
+
         # Type Mismatch
         if not isinstance(source, type(target)) and not (isinstance(source, (int, float)) and isinstance(target, (int, float))):
             if self.options["preserve_mismatch"]:
                 return copy.deepcopy(target)
-            # Route adopted source subtrees through the machinery so markers
-            # are consumed (Finding 1) — a bare marker was already caught by
-            # the knockout check above, so _copy_source can't return _REMOVED.
-            return self._copy_source(source, path)
+            return copy.deepcopy(source)
 
         # Merge Dictionaries
         if isinstance(source, dict):
@@ -211,81 +222,46 @@ class DeepMerge:
         # Apply knockouts first, then regular merges — so that
         # {"--a": "", "a": new} removes the old value and adds the new one.
         for stripped_key in knockout_keys:
-            if (path + (stripped_key,)) in self.options["exclude_paths"]:
-                continue
             result.pop(stripped_key, None)
 
         for key, value in regular_items:
             current_path = path + (key,)
 
-            if current_path in self.options["exclude_paths"]:
-                continue
-
             if key in result:
-                merged = self._merge_recursive(result[key], value, current_path)
-                if merged is _REMOVED:
-                    del result[key]
-                else:
-                    result[key] = merged
+                result[key] = self._merge_recursive(result[key], value, current_path)
             else:
-                # Knockout against a missing key: skip entirely (nothing to remove)
-                if ko_prefix and isinstance(value, str) and value == ko_prefix:
-                    continue
-                result[key] = self._copy_source(value, current_path)
+                result[key] = copy.deepcopy(value)
 
         return result
 
-    def _copy_source(self, value, path):
-        """
-        Copy a source value that has no target counterpart.
-
-        Containers still pass through the merge machinery so knockout
-        tokens inside them are consumed rather than copied into the
-        result; scalars copy verbatim.
-        """
-        if isinstance(value, dict):
-            return self._merge_dict({}, value, path)
-        if isinstance(value, list):
-            return self._merge_list([], value, path)
-        return copy.deepcopy(value)
-
     def _merge_list(self, target, source, path):
-        # Pre-scan source for knockout entries. A bare prefix wipes the
-        # whole target list; a payload entry (--x) removes target items
-        # equal to x.
+        # Pre-scan source for knockout entries: an item that starts with the
+        # prefix and has something after it removes target items equal to
+        # the remainder. A bare prefix is an ordinary item.
         ko_prefix = self.options["knockout_prefix"]
-        wipe = False
         knockout_matches = []
         indexed_source = []
         for i, item in enumerate(source):
-            if ko_prefix and isinstance(item, str) and item.startswith(ko_prefix):
-                if item == ko_prefix:
-                    wipe = True
-                else:
-                    knockout_matches.append(item[len(ko_prefix):])
+            if (ko_prefix and isinstance(item, str)
+                    and item.startswith(ko_prefix) and item != ko_prefix):
+                knockout_matches.append(item[len(ko_prefix):])
             else:
                 indexed_source.append((i, item))
 
-        # Knockouts override list-strategy options. The semantics are
-        # purely set-based: wipe or filter the target, then append the
-        # remaining source items. Position within the source list is
-        # irrelevant. (exclude_paths is not consulted here yet — Bug 2.)
-        if ko_prefix and (wipe or knockout_matches):
-            if wipe:
-                result = []
-            else:
-                result = [copy.deepcopy(t) for t in target if t not in knockout_matches]
-            result.extend(
-                self._copy_source(item, path + (i,)) for i, item in indexed_source
-            )
+        # Knockouts override list-strategy options: filter the target by
+        # value, then append the remaining source items. Position is
+        # irrelevant.
+        if knockout_matches:
+            result = [copy.deepcopy(t) for t in target if t not in knockout_matches]
+            result.extend(copy.deepcopy(item) for _, item in indexed_source)
         elif self.options["overwrite_list"]:
-            result = [self._copy_source(s, path + (i,)) for i, s in enumerate(source)]
+            result = [copy.deepcopy(s) for s in source]
         elif self.options["extend_existing_list"]:
             result = []
             max_len = max(len(source), len(target))
             for i in range(max_len):
-                if i < len(source) and (path + (i,)) not in self.options["exclude_paths"]:
-                    result.append(self._copy_source(source[i], path + (i,)))
+                if i < len(source):
+                    result.append(copy.deepcopy(source[i]))
                 if i < len(target):
                     result.append(copy.deepcopy(target[i]))
         else:
@@ -295,20 +271,16 @@ class DeepMerge:
                 item_path = path + (i,)
 
                 if i < len(source) and i < len(target):
-                    # Both sides exist: recurse so exclude_paths fires correctly.
+                    # Both sides exist: merge positionally.
                     s_item = source[i]
                     t_item = target[i]
 
                     result.append(self._merge_recursive(t_item, s_item, item_path))
 
                 elif i < len(source):
-                    # Source-only item: skip if its path is excluded.
-                    if item_path in self.options["exclude_paths"]:
-                        continue
-                    result.append(self._copy_source(source[i], item_path))
+                    result.append(copy.deepcopy(source[i]))
                 else:
-                    # Target-only item: always preserved (exclude_paths controls
-                    # what source can write, not what target retains).
+                    # Target-only item: always preserved.
                     result.append(copy.deepcopy(target[i]))
 
         if self.options["deduplicate_list"]:

@@ -78,6 +78,29 @@ def test_top_level_none_handling_within_containers():
     assert merger_n.merge({"a": "keep"}, {"a": None}) == {"a": None}
 
 
+def test_none_target_is_absent_not_protected():
+    """Q10: a blank YAML key or stubbed section parses to None in the base —
+    a patch supplying the real value must not be blocked by preserve_mismatch."""
+    m = DeepMerge(preserve_mismatch=True)
+    assert m.merge({"port": None}, {"port": 8080}) == {"port": 8080}
+    assert m.merge({"db": None}, {"db": {"h": "x"}}) == {"db": {"h": "x"}}
+    assert m.merge({"db": None}, {"db": [1, 2]}) == {"db": [1, 2]}
+
+
+def test_none_patch_side_unchanged():
+    """Source-side None semantics are untouched by Q10."""
+    assert DeepMerge().merge({"a": 5}, {"a": None}) == {"a": 5}
+    assert DeepMerge(merge_none_value=True).merge({"a": 5}, {"a": None}) == {"a": None}
+    assert DeepMerge().merge({"a": None}, {"a": None}) == {"a": None}
+
+
+def test_none_target_adoption_is_verbatim():
+    """Q10 adoption uses plain deepcopy — a bare marker is data, not a token."""
+    m = DeepMerge(knockout_prefix="--", preserve_mismatch=True)
+    assert m.merge({"a": None}, {"a": ["--"]}) == {"a": ["--"]}
+    assert m.merge({"a": None}, {"a": {"b": "--"}}) == {"a": {"b": "--"}}
+
+
 def test_top_level_list_merge():
     """Top-level lists merge with the same strategies as nested lists."""
     merger = DeepMerge()

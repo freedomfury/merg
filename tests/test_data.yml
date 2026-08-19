@@ -556,7 +556,7 @@ uc124:
     - d
     - e
 uc125:
-  # Knockout: dict — bare marker removes the key, not just its value.
+  # Knockout: a bare marker is data — it assigns the two-character string.
   option:
     knockout_prefix: '--'
   source:
@@ -569,9 +569,10 @@ uc125:
       b: 2
   answer:
     x:
+      a: '--'
       b: 99
 uc126:
-  # Knockout: dict — bare marker at a nested path removes that key.
+  # Knockout: bare marker at a nested value is likewise data.
   option:
     knockout_prefix: '--'
   source:
@@ -583,9 +584,10 @@ uc126:
       b: untouched
   answer:
     x:
+      a: '--'
       b: untouched
 uc127:
-  # Knockout: missing key in target is a no-op (not added as null).
+  # Knockout: bare marker under a missing key assigns the string.
   option:
     knockout_prefix: '--'
   source:
@@ -597,6 +599,7 @@ uc127:
   answer:
     x:
       kept: yes
+      missing: '--'
 uc128:
   # Knockout: custom prefix.
   option:
@@ -633,7 +636,7 @@ uc129:
     - b
     - c
 uc130:
-  # Knockout: nested in dict path — inner key removed, no cascade.
+  # Knockout: nested bare marker is data.
   option:
     knockout_prefix: '--'
   source:
@@ -645,11 +648,12 @@ uc130:
       other: 1
   answer:
     outer:
+      inner: '--'
       other: 1
 uc131:
-  # Knockout combined with exclude_paths and dict-list mix:
-  # exclude_paths protects 'guarded.token' from any change, while knockouts
-  # remove 'beta' from features and delete the 'fallback' region key.
+  # Knockout combined with exclude_paths and dict-list mix: exclude_paths
+  # protects 'guarded.token' from any change, payload knockout removes
+  # 'beta' from features, and the bare marker at regions.fallback is data.
   option:
     knockout_prefix: '--'
     exclude_paths:
@@ -681,11 +685,12 @@ uc131:
     - gdpr_banner
     regions:
       primary: us-east
+      fallback: '--'
     guarded:
       token: SECRET
       label: new_label
 uc132:
-  # Knockout: bare marker in a list wipes the target, then appends the rest.
+  # Knockout: bare marker in a list is an ordinary item (positional merge).
   option:
     knockout_prefix: '--'
   source:
@@ -699,9 +704,11 @@ uc132:
     - 3
   answer:
     x:
+    - '--'
     - '9'
+    - 3
 uc133:
-  # Knockout: bare marker position in the source list is irrelevant.
+  # Knockout: bare marker anywhere in a list is an ordinary item.
   option:
     knockout_prefix: '--'
   source:
@@ -716,8 +723,10 @@ uc133:
   answer:
     x:
     - '9'
+    - '--'
+    - 3
 uc134:
-  # Knockout: bare + payload together — wipe wins, nothing survives to append.
+  # Knockout: bare + payload together — payload removes b, bare stays as data.
   option:
     knockout_prefix: '--'
   source:
@@ -729,4 +738,6 @@ uc134:
     - a
     - b
   answer:
-    x: []
+    x:
+    - a
+    - '--'

@@ -109,8 +109,8 @@ def scenario_knockout_merge():
     region_override = {
         # Remove 'telemetry' and 'ads', then add 'gdpr_banner'
         "features": ["--telemetry", "--ads", "gdpr_banner"],
-        # Remove the fallback region key for this deployment
-        "regions": {"fallback": "--"}
+        # Remove the fallback region key for this deployment (payload form)
+        "regions": {"--fallback": ""}
     }
 
     merg = DeepMerge(knockout_prefix="--")
