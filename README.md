@@ -128,6 +128,8 @@ merg.merge({"tags": ["a", "b", "c"]}, {"tags": ["x"]})
 # {"tags": ["x"]}
 ```
 
+Mutually exclusive with `extend_existing_list` — setting both raises `TypeError`.
+
 ### `extend_existing_list` (default: `False`)
 
 Interleave source and target list items instead of overwriting by index.
@@ -137,6 +139,9 @@ merg = DeepMerge(extend_existing_list=True)
 merg.merge({"x": ["T1", "T2"]}, {"x": ["S1", "S2"]})
 # {"x": ["S1", "T1", "S2", "T2"]}
 ```
+
+Mutually exclusive with `overwrite_list` — the two name different list-assembly
+strategies, so setting both raises `TypeError` rather than silently picking one.
 
 ### `deduplicate_list` (default: `False`)
 

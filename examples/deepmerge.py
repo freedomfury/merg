@@ -3,7 +3,9 @@ import yaml
 
 from merg import DeepMerge
 
-source = {
+# Shared by Examples 1 and 2 only, so the two differ by merge options alone.
+# Every scenario below owns its data locally.
+SOURCE = {
     "server": {
         "port": 8080,
         "host": "localhost",
@@ -11,7 +13,7 @@ source = {
     }
 }
 
-target = {
+TARGET = {
     "server": {
         "port": 80,
         "tags": ["base", "http"]
@@ -19,23 +21,23 @@ target = {
     "database": "postgres"
 }
 
-# Example 1: Default Merge (Overwrite list)
-print("--- Example 1: Default Merge ---")
-merg = DeepMerge()
-result = merg.merge(target, source)
-print(yaml.dump(result, sort_keys=False))
-
-# Example 2: Extend List
-print("\n--- Example 2: Extend List (Interleave) ---")
-merg = DeepMerge(extend_existing_list=True)
-result = merg.merge(target, source)
-print(yaml.dump(result, sort_keys=False))
-
-# --- Real World Scenarios ---
-
 def print_scenario(title, data):
     print(f"\n--- {title} ---")
     print(yaml.dump(data, sort_keys=False))
+
+# Example 1: Default Merge (positional, by list index)
+def example_default_merge():
+    merg = DeepMerge()
+    merged = merg.merge(TARGET, SOURCE)
+    print_scenario("Example 1: Default Merge", merged)
+
+# Example 2: Extend List
+def example_extend_list():
+    merg = DeepMerge(extend_existing_list=True)
+    merged = merg.merge(TARGET, SOURCE)
+    print_scenario("Example 2: Extend List (Interleave)", merged)
+
+# --- Real World Scenarios ---
 
 # Scenario 3: Configuration Management
 def scenario_config_merge():
@@ -118,8 +120,8 @@ def scenario_knockout_merge():
     print_scenario("Scenario 6: Knockout Prefix (List removal + key removal)", merged)
 
 if __name__ == "__main__":
-    # The first two examples run on import if we don't guard them,
-    # but for this simple script it's fine.
+    example_default_merge()
+    example_extend_list()
     scenario_config_merge()
     scenario_permissions_merge()
     scenario_secure_merge()

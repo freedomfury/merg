@@ -2,11 +2,8 @@ import ast
 import contextlib
 import copy
 import datetime
-import logging
 
 from .exceptions import InvalidTypeError
-
-logger = logging.getLogger(__name__)
 
 
 def _format_path(path):
@@ -38,6 +35,18 @@ class DeepMerge:
 
     ALLOWED_TYPES = (dict, list, str, int, float, bool, type(None))
 
+    # Option pairs that cannot both be True. Each entry is (a, b, reason);
+    # the reason completes the sentence "... cannot both be True: <reason>."
+    # Add a line here to make another pair incompatible.
+    INCOMPATIBLE_OPTIONS = (
+        (
+            "overwrite_list",
+            "extend_existing_list",
+            "they name different list-assembly strategies, so the combination "
+            "has no meaning — pick the one you want",
+        ),
+    )
+
     def __init__(self, **options):
         self.options = {
             "preserve_mismatch": False,
@@ -60,6 +69,16 @@ class DeepMerge:
             )
 
         self.options.update(options)
+
+        # Reject mutually exclusive options for the same reason unknown names
+        # are rejected: the caller asked for two different things and the
+        # library should not silently pick one.
+        for first, second, reason in self.INCOMPATIBLE_OPTIONS:
+            if self.options[first] and self.options[second]:
+                raise TypeError(
+                    f"incompatible options: {first} and {second} "
+                    f"cannot both be True: {reason}."
+                )
 
         # Validate and normalize exclude_paths to a set of tuples.
         raw_paths = self.options["exclude_paths"]
@@ -240,20 +259,20 @@ class DeepMerge:
         # the remainder. A bare prefix is an ordinary item.
         ko_prefix = self.options["knockout_prefix"]
         knockout_matches = []
-        indexed_source = []
-        for i, item in enumerate(source):
+        plain_source = []
+        for item in source:
             if (ko_prefix and isinstance(item, str)
                     and item.startswith(ko_prefix) and item != ko_prefix):
                 knockout_matches.append(item[len(ko_prefix):])
             else:
-                indexed_source.append((i, item))
+                plain_source.append(item)
 
         # Knockouts override list-strategy options: filter the target by
         # value, then append the remaining source items. Position is
         # irrelevant.
         if knockout_matches:
             result = [copy.deepcopy(t) for t in target if t not in knockout_matches]
-            result.extend(copy.deepcopy(item) for _, item in indexed_source)
+            result.extend(copy.deepcopy(item) for item in plain_source)
         elif self.options["overwrite_list"]:
             result = [copy.deepcopy(s) for s in source]
         elif self.options["extend_existing_list"]:

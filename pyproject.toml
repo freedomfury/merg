@@ -12,12 +12,11 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
+    # Only versions CI actually exercises are claimed here. The package installs
+    # and passes its suite on 3.10-3.12 as well (requires-python is the real
+    # floor); add the classifier back per version as CI grows a matrix.
     "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Libraries :: Python Modules",
-    "Typing :: Typed",
 ]
 
 [project.urls]
